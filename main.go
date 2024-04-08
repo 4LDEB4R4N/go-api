@@ -18,8 +18,8 @@ func main() {
 	router.POST("/customers", controllers.CreateCustomer)
 	router.GET("/customers", controllers.GetAllCustomers)
 	router.GET("/customers/:id", controllers.GetCustomer)
-	router.PUT("/customer/:id", controllers.UpdateCustomer)
-	router.DELETE("/customer/:id", controllers.DeleteCustomer)
+	router.PUT("/customers/:id", controllers.UpdateCustomer)
+	router.DELETE("/customers/:id", controllers.DeleteCustomer)
 
 	router.POST("/vehicles", controllers.CreateVehicle)
 	router.GET("/vehicles", controllers.GetAllVehicles)
@@ -27,14 +27,14 @@ func main() {
 	router.PUT("/vehicles/:id", controllers.UpdateVehicle)
 	router.DELETE("/vehicles/:id", controllers.DeleteVehicle)
 
-	router.POST("/customer/:id/vehicles/:vehicleID/links/:link", controllers.AddVehicleToCustomer)
-	router.GET("/customer/:id/vehicles", controllers.ListVehiclesByCustomer)
+	router.POST("/customers/:id/vehicles/:vehicleID/links/:link", controllers.AddVehicleToCustomer)
+	router.GET("/customers/:id/vehicles", controllers.ListVehiclesByCustomer)
 	router.GET("/vehicles/links/:link", controllers.ListVehiclesByLink)
 
-	router.GET("/customer/:id/vehicles/link/:link", controllers.ListVehiclesByLinkAndCustomer)
+	router.GET("/customers/:id/vehicles/links/:link", controllers.ListVehiclesByLinkAndCustomer)
 
 	router.DELETE("/customers/:id/vehicles/:vehicleID", controllers.RemoveVehicleFromCustomer)
-	router.DELETE("/users/:id/vehicles", controllers.RemoveAllVehiclesFromCustomer)
+	router.DELETE("/customers/:id/vehicles", controllers.RemoveAllVehiclesFromCustomer)
 
 	err := router.Run(":8080")
 

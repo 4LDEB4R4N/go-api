@@ -5,7 +5,11 @@ import (
 	"api/models"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
+
+
+
 
 func CreateCustomer(ctx *gin.Context) {
 
@@ -200,6 +204,12 @@ func AddVehicleToCustomer(ctx *gin.Context) {
 	id := ctx.Param("id")
 	vehicleID := ctx.Param("vehicleID")
 	link := ctx.Param("link")
+	FORCE := ctx.DefaultQuery("FORCE", "false")
+
+	if FORCE != "true" && FORCE != "false" {
+		ctx.JSON(400, gin.H{"error": "Invalid FORCE value"})
+		return
+	}
 
 	if !models.IsValidLink(string(link)) {
 		ctx.JSON(400, gin.H{"error": "Invalid link value"})
@@ -208,9 +218,28 @@ func AddVehicleToCustomer(ctx *gin.Context) {
 
 	var customer models.Customer
 	var vehicle models.Vehicle
+	var customerVehicles []models.CustomerVehicle
 
 	db.Db.First(&customer, id)
 	db.Db.First(&vehicle, vehicleID)
+
+	db.Db.Where("vehicle_id = ?", vehicle.ID).Find(&customerVehicles)
+
+	if link == "FROTA" {
+		if FORCE == "true" {
+			db.Db.Where("vehicle_id = ?", vehicle.ID).Delete(&customerVehicles)
+		} else if FORCE == "false" && len(customerVehicles) > 0 {
+			ctx.JSON(400, gin.H{"error": "Vehicle already linked with another customer and cannot be linked with a FROTA link"})
+			return
+		}
+	} else {
+		for _, customerVehicle := range customerVehicles {
+			if customerVehicle.Link == models.Link("FROTA") {
+				ctx.JSON(400, gin.H{"error": "Vehicle already linked with a FROTA link"})
+				return
+			}
+		}
+	}
 
 	customerVehicle := models.CustomerVehicle{
 		CustomerID: customer.ID,
@@ -254,7 +283,6 @@ func ListVehiclesByCustomer(ctx *gin.Context) {
 
 func ListVehiclesByLink(ctx *gin.Context) {
 	var customerVehicles []models.CustomerVehicle
-	var vehicles []models.Vehicle
 
 	link := ctx.Param("link")
 
@@ -263,11 +291,21 @@ func ListVehiclesByLink(ctx *gin.Context) {
 		return
 	}
 
-	err := db.Db.Where("link = ?", link).Find(&customerVehicles).Error
+	err := db.Db.Unscoped().Where("link = ?", link).Find(&customerVehicles).Error
 	if err != nil {
 		ctx.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
+
+	type vehicleWithLink struct {
+		Vehicle          models.Vehicle
+		CostumerID       uint
+		Link             models.Link
+		Active           bool
+		DesctivationDate gorm.DeletedAt
+	}
+
+	var vehicles []vehicleWithLink
 
 	for _, customerVehicle := range customerVehicles {
 		var vehicle models.Vehicle
@@ -276,7 +314,18 @@ func ListVehiclesByLink(ctx *gin.Context) {
 			ctx.JSON(500, gin.H{"error": err.Error()})
 			return
 		}
-		vehicles = append(vehicles, vehicle)
+
+		
+
+		withLink := vehicleWithLink{
+			Vehicle:          vehicle,
+			CostumerID:       customerVehicle.CustomerID,
+			Link:             customerVehicle.Link,
+			Active:           customerVehicle.DeletedAt == gorm.DeletedAt{},
+			DesctivationDate: customerVehicle.DeletedAt,
+		}
+
+		vehicles = append(vehicles, withLink)
 	}
 
 	ctx.JSON(200, gin.H{"vehicles": vehicles})
@@ -284,30 +333,49 @@ func ListVehiclesByLink(ctx *gin.Context) {
 
 func ListVehiclesByLinkAndCustomer(ctx *gin.Context) {
 	var customerVehicles []models.CustomerVehicle
-	var vehicles []models.Vehicle
 
 	link := ctx.Param("link")
-	userID := ctx.Param("id")
+	customerID := ctx.Param("id")
 
 	if !models.IsValidLink(link) {
 		ctx.JSON(400, gin.H{"error": "Invalid link value"})
 		return
 	}
 
-	err := db.Db.Where("link = ? AND user_id = ?", link, userID).Find(&customerVehicles).Error
+	err := db.Db.Unscoped().Where("link = ? AND customer_id = ?", link, customerID).Find(&customerVehicles).Error
 	if err != nil {
 		ctx.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	for _, userVehicle := range customerVehicles {
+	type vehicleWithLink struct {
+		Vehicle          models.Vehicle
+		Link             models.Link
+		Active           bool
+		DesctivationDate gorm.DeletedAt
+	}
+
+	var vehicles []vehicleWithLink
+
+	for _, customerVehicle := range customerVehicles {
 		var vehicle models.Vehicle
-		err = db.Db.First(&vehicle, userVehicle.VehicleID).Error
+		err = db.Db.First(&vehicle, customerVehicle.VehicleID).Error
+
 		if err != nil {
 			ctx.JSON(500, gin.H{"error": err.Error()})
 			return
 		}
-		vehicles = append(vehicles, vehicle)
+		
+
+		withLink := vehicleWithLink{
+			Vehicle:          vehicle,
+			Link:             customerVehicle.Link,
+			Active:           customerVehicle.DeletedAt == gorm.DeletedAt{},
+			DesctivationDate: customerVehicle.DeletedAt,
+		}
+
+		vehicles = append(vehicles, withLink)
+
 	}
 
 	ctx.JSON(200, gin.H{"vehicles": vehicles})
@@ -331,7 +399,7 @@ func RemoveVehicleFromCustomer(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(200, gin.H{"user": customer})
+	ctx.JSON(200, gin.H{"customer": customer})
 
 }
 
@@ -350,6 +418,6 @@ func RemoveAllVehiclesFromCustomer(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(200, gin.H{"costumer": customer})
+	ctx.JSON(200, gin.H{"customer": customer})
 
 }

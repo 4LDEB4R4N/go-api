@@ -11,8 +11,10 @@ func init() {
 }
 
 func main() {
-	db.Db.SetupJoinTable(&models.Customer{}, "Vehicles", &models.CustomerVehicle{})
-	err := db.Db.AutoMigrate(&models.Customer{}, &models.Vehicle{})
+	// drop the table if it exists
+	db.Db.Migrator().DropTable(&models.Customer{}, &models.Vehicle{}, &models.CustomerVehicle{})
+	// migrate the database
+	err := db.Db.AutoMigrate(&models.Customer{}, &models.Vehicle{}, &models.CustomerVehicle{})
 	if err != nil {
 		fmt.Println("Error migrating the database")
 	} else {

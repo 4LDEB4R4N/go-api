@@ -420,7 +420,8 @@
 
 ### Adicionar veiculo para um  cliente 
 
-- **POST** `/users/:id/vehicles/:vehicleID/links/:link`
+- **POST** `/costumers/:id/vehicles/:vehicleID/links/:link`
+- **Parametros opcionais**: `FORCE: true/false`
 - **Descrição**: Adiciona um veiculo para um cliente com um determinado vinculo.
 
 ## Respostas
@@ -466,7 +467,7 @@
   }
 ```
 
-### Listar todos os veículos  de Um cliente
+### Listar todos os veículos  de um cliente
 
 - **GET** `/customers/:id/vehicles`
 - **Descrição**: Lista todos os veículos  de um cliente.
@@ -552,7 +553,7 @@
 
 ### Listar todos os veículos dado um cliente e um  vinculo
 
-- **GET** `/customer/:id/vehicles/link/:link`
+- **GET** `/customers/:id/vehicles/link/:link`
 - **Descrição**: Lista todos os veículos por vinculo.
 
 ## Respostas
