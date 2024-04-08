@@ -55,7 +55,7 @@ func GetCustomer(ctx *gin.Context) {
 
 	id := ctx.Param("id")
 
-	err := db.Db.Model(&models.Customer{}).Preload("Vehicles").First(&customer, id)
+	err := db.Db.Model(&models.Customer{}).Preload("Vehicles").Where("id  = ?",  id).First(&customer)
 
 	if err.Error != nil {
 		ctx.JSON(500, gin.H{"error": err.Error.Error()})
@@ -269,9 +269,31 @@ func ListVehiclesByCustomer(ctx *gin.Context) {
 		return
 	}
 
-	var vehicles []models.Vehicle
+	type vehicleWithLink struct {
+		Vehicle          models.Vehicle
+		Link             models.Link
+	}
 
-	err = db.Db.Model(&customer).Association("Vehicles").Find(&vehicles)
+	var vehicles []vehicleWithLink
+	var customerVehicles []models.CustomerVehicle
+
+	db.Db.Where("customer_id = ?", id).Find(&customerVehicles)
+
+	for _, customerVehicle := range customerVehicles {
+		var vehicle models.Vehicle
+		err = db.Db.First(&vehicle, customerVehicle.VehicleID).Error
+		if err != nil {
+			ctx.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+
+		withLink := vehicleWithLink{
+			Vehicle: vehicle,
+			Link:    customerVehicle.Link,
+		}
+
+		vehicles = append(vehicles, withLink)
+	}
 
 	if err != nil {
 		ctx.JSON(500, gin.H{"error": err.Error()})
